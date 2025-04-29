@@ -1,13 +1,14 @@
+
 -- MySQL dump 10.13  Distrib 8.0.41, for Win64 (x86_64)
 --
--- Host: 127.0.0.1    Database: easy_table
+-- Host: localhost    Database: easytable
 -- ------------------------------------------------------
 -- Server version	8.0.41
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8mb4 */;
+/*!50503 SET NAMES utf8 */;
 /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
 /*!40103 SET TIME_ZONE='+00:00' */;
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
@@ -57,7 +58,7 @@ CREATE TABLE `comensal` (
   PRIMARY KEY (`IDComensal`),
   KEY `comensal_mesa` (`IDMesa`),
   CONSTRAINT `comensal_mesa` FOREIGN KEY (`IDMesa`) REFERENCES `mesa` (`IDMesa`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -66,7 +67,6 @@ CREATE TABLE `comensal` (
 
 LOCK TABLES `comensal` WRITE;
 /*!40000 ALTER TABLE `comensal` DISABLE KEYS */;
-INSERT INTO `comensal` VALUES (2,'Mirko',20,0),(3,'Joaquin',161,0),(4,'Mirko',110,0),(5,'kevin',27,0),(6,'coni',21,0),(11,'zz',1,0);
 /*!40000 ALTER TABLE `comensal` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -83,7 +83,9 @@ CREATE TABLE `comensal_producto` (
   `cantidad` int NOT NULL,
   `Notas` varchar(200) NOT NULL,
   `Entregado` tinyint(1) DEFAULT '0',
-  PRIMARY KEY (`IDComensal`,`IDProducto`,`Notas`),
+  `Instancia` int NOT NULL DEFAULT '1',
+  PRIMARY KEY (`IDComensal`,`IDProducto`,`Notas`,`Instancia`),
+  UNIQUE KEY `idx_comensal_producto_instancia` (`IDComensal`,`IDProducto`,`Instancia`),
   KEY `comensal_producto_producto` (`IDProducto`),
   CONSTRAINT `comensal_producto_comensal` FOREIGN KEY (`IDComensal`) REFERENCES `comensal` (`IDComensal`),
   CONSTRAINT `comensal_producto_producto` FOREIGN KEY (`IDProducto`) REFERENCES `producto` (`IDProducto`)
@@ -96,7 +98,6 @@ CREATE TABLE `comensal_producto` (
 
 LOCK TABLES `comensal_producto` WRITE;
 /*!40000 ALTER TABLE `comensal_producto` DISABLE KEYS */;
-INSERT INTO `comensal_producto` VALUES (3,382,1,'d',0),(4,756,1,'d',0),(5,135,1,'d',0);
 /*!40000 ALTER TABLE `comensal_producto` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -111,10 +112,14 @@ CREATE TABLE `comensal_producto_extra` (
   `IDComensal` int NOT NULL,
   `IDProducto` int NOT NULL,
   `IDExtra` int NOT NULL,
-  `cantidad` int NOT NULL,
-  PRIMARY KEY (`IDComensal`,`IDProducto`,`IDExtra`),
+  `Cantidad` int NOT NULL,
+  `Instancia` int NOT NULL DEFAULT '1',
+  `Notas` varchar(200) NOT NULL DEFAULT '',
+  PRIMARY KEY (`IDComensal`,`IDProducto`,`IDExtra`,`Instancia`,`Notas`),
   KEY `comensal_producto_extra_extra` (`IDExtra`),
-  CONSTRAINT `comensal_producto_extra_comensal_producto` FOREIGN KEY (`IDComensal`, `IDProducto`) REFERENCES `comensal_producto` (`IDComensal`, `IDProducto`),
+  KEY `fk_comensal_producto_extra` (`IDComensal`,`IDProducto`,`Instancia`),
+  KEY `comensal_producto_extra_comensal_producto_idx` (`IDComensal`,`IDProducto`,`Instancia`,`Notas`),
+  CONSTRAINT `comensal_producto_extra_comensal_producto` FOREIGN KEY (`IDComensal`, `IDProducto`, `Instancia`) REFERENCES `comensal_producto` (`IDComensal`, `IDProducto`, `Instancia`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `comensal_producto_extra_extra` FOREIGN KEY (`IDExtra`) REFERENCES `extra` (`IDExtra`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -324,4 +329,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-04-17  0:00:18
+-- Dump completed on 2025-04-28 19:32:36
