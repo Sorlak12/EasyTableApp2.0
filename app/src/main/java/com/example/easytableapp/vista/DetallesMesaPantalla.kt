@@ -538,7 +538,7 @@ fun DetallesMesaPantalla(navController: NavController, idMesa: Int){
                     }
 
                     // Botón para limpiar la mesa si todos los comensales estan pagados
-                    if (comensales.value.all { comensal -> comensal.Pagado == 1 }) {
+                    if (comensales.value.isNotEmpty() && comensales.value.all { comensal -> comensal.Pagado == 1 }) {
                         // Botón para limpiar la mesa
                         Button (
                             onClick = { showLimpiarDialog.value = true },
