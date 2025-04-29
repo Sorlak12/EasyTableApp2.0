@@ -110,7 +110,7 @@ fun ListaExtras(idProducto: Int, idMesa: Int, idComensal: Int, navController: Na
                                         extrasSeleccionados.remove(extra.IDExtra)
                                     }
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Black),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text("-")
@@ -121,7 +121,7 @@ fun ListaExtras(idProducto: Int, idMesa: Int, idComensal: Int, navController: Na
                                     cantidad += 1
                                     extrasSeleccionados[extra.IDExtra] = cantidad
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Black),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text("+")
@@ -195,7 +195,7 @@ fun ProductoConAgregarButton(idComensal: Int, idProducto: Int, extras: List<Extr
                     ) {
                         Button(
                             onClick = { if (cantidadSeleccionada.intValue > 1) cantidadSeleccionada.intValue -= 1 },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Black),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text("-")
@@ -203,7 +203,7 @@ fun ProductoConAgregarButton(idComensal: Int, idProducto: Int, extras: List<Extr
                         Text(cantidadSeleccionada.intValue.toString())
                         Button(
                             onClick = { cantidadSeleccionada.intValue += 1 },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Black),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text("+")
@@ -244,7 +244,7 @@ fun ProductoConAgregarButton(idComensal: Int, idProducto: Int, extras: List<Extr
                             onFailure = { Log.e("API", "Error: ${it.localizedMessage}") }
                         )
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = softGreen),
+                    colors = ButtonDefaults.buttonColors(containerColor = softGreen,contentColor = Color.Black),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("Aceptar")
@@ -253,7 +253,7 @@ fun ProductoConAgregarButton(idComensal: Int, idProducto: Int, extras: List<Extr
             dismissButton = {
                 Button(
                     onClick = { showDialog.value = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = softRed),
+                    colors = ButtonDefaults.buttonColors(containerColor = softRed, contentColor = Color.Black),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("Cancelar")
@@ -271,7 +271,7 @@ fun ProductoConAgregarButton(idComensal: Int, idProducto: Int, extras: List<Extr
         Button(
             onClick = { showDialog.value = true },
             modifier = Modifier.fillMaxSize(),
-            colors = ButtonDefaults.buttonColors(containerColor = softGreen),
+            colors = ButtonDefaults.buttonColors(containerColor = softGreen,contentColor = Color.Black),
             shape = RoundedCornerShape(8.dp)
         ) {
             Text("Agregar", fontSize = 16.sp)
