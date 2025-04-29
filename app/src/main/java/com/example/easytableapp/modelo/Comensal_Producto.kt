@@ -5,5 +5,6 @@ data class Comensal_Producto(
     val IDProducto: Int,
     val cantidad: Int,
     var entregado: Boolean ?= false,
-    val Notas: String
+    val Notas: String,
+    val Instancia: Int
 )

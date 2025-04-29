@@ -1,5 +1,6 @@
 package com.example.easytableapp.vista
 
+import android.os.Debug
 import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,7 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -19,6 +19,7 @@ import androidx.navigation.NavController
 import com.example.easytableapp.controlador.ApiController
 import com.example.easytableapp.modelo.Extra
 import com.example.easytableapp.modelo.Producto
+import com.example.easytableapp.modelo.ExtraData
 import com.example.easytableapp.ui.softGreen
 import com.example.easytableapp.ui.softRed
 import java.text.NumberFormat
@@ -30,7 +31,7 @@ fun ListaExtras(idProducto: Int, idMesa: Int, idComensal: Int, navController: Na
     val isLoading = remember { mutableStateOf(true) }
     val numberFormat = NumberFormat.getNumberInstance(Locale.US)
     val listaExtras = remember { mutableStateListOf<Extra>() }
-    val extrasSeleccionados = remember { mutableStateMapOf<Int, Int>() }
+    val extrasSeleccionados = remember { mutableStateMapOf<Int,Int>() }
 
     LaunchedEffect(Unit) {
         ApiController.obtenerExtras({ extras ->
@@ -101,7 +102,14 @@ fun ListaExtras(idProducto: Int, idMesa: Int, idComensal: Int, navController: Na
                             modifier = Modifier.wrapContentWidth()
                         ) {
                             Button(
-                                onClick = { if (cantidad > 0) cantidad -= 1 },
+                                onClick = {
+                                    if (cantidad > 0) cantidad -= 1
+                                    if (cantidad > 0) {
+                                        extrasSeleccionados[extra.IDExtra] = cantidad
+                                    } else {
+                                        extrasSeleccionados.remove(extra.IDExtra)
+                                    }
+                                },
                                 colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
@@ -109,7 +117,10 @@ fun ListaExtras(idProducto: Int, idMesa: Int, idComensal: Int, navController: Na
                             }
                             Text(cantidad.toString())
                             Button(
-                                onClick = { cantidad += 1 },
+                                onClick = {
+                                    cantidad += 1
+                                    extrasSeleccionados[extra.IDExtra] = cantidad
+                                },
                                 colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
@@ -117,7 +128,6 @@ fun ListaExtras(idProducto: Int, idMesa: Int, idComensal: Int, navController: Na
                             }
                         }
                     }
-                    extrasSeleccionados[extra.IDExtra] = cantidad
                 }
             }
 
@@ -127,10 +137,15 @@ fun ListaExtras(idProducto: Int, idMesa: Int, idComensal: Int, navController: Na
                     .padding(12.dp),
                 contentAlignment = Alignment.Center
             ) {
+                val extrasArray: List<ExtraData> = extrasSeleccionados
+                    .filter { it.value > 0 } // Filtrar solo los extras con cantidad > 0
+                    .map { (idExtra, cantidad) ->
+                        ExtraData(idExtra, cantidad)
+                    }
                 ProductoConAgregarButton(
                     idComensal = idComensal,
                     idProducto = idProducto,
-                    extras = extrasSeleccionados,
+                    extras = extrasArray,
                     idMesa = idMesa,
                     navController = navController
                 )
@@ -140,7 +155,7 @@ fun ListaExtras(idProducto: Int, idMesa: Int, idComensal: Int, navController: Na
 }
 
 @Composable
-fun ProductoConAgregarButton(idComensal: Int, idProducto: Int, extras: MutableMap<Int, Int>, idMesa: Int, navController: NavController) {
+fun ProductoConAgregarButton(idComensal: Int, idProducto: Int, extras: List<ExtraData>, idMesa: Int, navController: NavController) {
     val showDialog = remember { mutableStateOf(false) }
     val inputUsuario = remember { mutableStateOf("") }
     val cantidadSeleccionada = remember { mutableIntStateOf(1) }
@@ -200,26 +215,29 @@ fun ProductoConAgregarButton(idComensal: Int, idProducto: Int, extras: MutableMa
                 Button(
                     onClick = {
                         val notaFinal = inputUsuario.value.ifBlank { " " }
+                        Log.e("API", "Extras: $extras")
+
                         ApiController.agregarProducto(
                             idComensal,
                             idProducto,
                             cantidadSeleccionada.intValue,
                             0,
                             notaFinal,
-                            onSuccess = {
+                            extras,
+                            onSuccess = { /*instanciaGenerada->
                                 extras.forEach { extra ->
                                     if (extra.value > 0) {
                                         ApiController.agregarExtra(
                                             idComensal,
                                             idProducto,
-                                            notaFinal,
+                                            instanciaGenerada,
                                             extra.key,
                                             extra.value,
                                             onSuccess = { Log.d("API", "Extra agregado") },
                                             onFailure = { Log.e("API", "Error: ${it.localizedMessage}") }
                                         )
                                     }
-                                }
+                                }*/
                                 showDialog.value = false
                                 navController.navigate("detalles_mesa/$idMesa")
                             },

@@ -1,6 +1,7 @@
 package com.example.easytableapp.controlador
 
 // Librerias de Retrofit
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import com.example.easytableapp.modelo.Categoria
 import retrofit2.Call
 import retrofit2.http.GET
@@ -12,6 +13,8 @@ import com.example.easytableapp.modelo.Mesa
 import com.example.easytableapp.modelo.Producto
 import com.example.easytableapp.modelo.Comensal
 import com.example.easytableapp.modelo.Extra
+import com.example.easytableapp.modelo.ExtraData
+import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -51,15 +54,16 @@ interface ApiService {
         @Path("idProducto") idProducto: Int,
         @Path("cantidad") cantidad: Int,
         @Path("entregado") entregado: Int,
-        @Path("notas") notas: String ?= null
+        @Path("notas") notas: String,
+        @Body extras: List<ExtraData>
     ): Call<Map<String,String>>
 
     //POST agregar extra
-    @POST("/agregarExtra/{idComensal}/{idProducto}/{notas}/{idExtra}/{cantidad}")
+    @POST("/agregarExtra/{idComensal}/{idProducto}/{instancia}/{idExtra}/{cantidad}")
     fun postAgregarExtra(
         @Path("idComensal") idComensal: Int,
         @Path("idProducto") idProducto: Int,
-        @Path("notas") notas: String,
+        @Path("instancia") notas: Int,
         @Path("idExtra") idExtra: Int,
         @Path("cantidad") cantidad: Int
     ): Call<Map<String, String>>
@@ -128,11 +132,12 @@ interface ApiService {
     @DELETE("/pagarMesa/{idMesa}")
     fun deletePagarMesa(@Path("idMesa") idMesa: Int): Call<Void>
 
-    @POST("actualizar_entregado/{id_comensal}/{id_producto}/{notas}/{entregado}")
-    fun postActualizarEntregado(
+    @POST("actualizar_entregado/{id_comensal}/{id_producto}/{notas}/{instancia}/{entregado}")
+    fun     postActualizarEntregado(
         @Path("id_comensal") idComensal: Int,
         @Path("id_producto") idProducto: Int,
         @Path("notas") notas: String,
+        @Path("instancia") instancia: Int,
         @Path("entregado") entregado: Boolean
     ): Call<Void>
 

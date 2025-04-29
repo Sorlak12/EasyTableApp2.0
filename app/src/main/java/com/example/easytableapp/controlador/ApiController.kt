@@ -6,6 +6,7 @@ import com.example.easytableapp.modelo.Comensal
 import com.example.easytableapp.modelo.Comensal_Producto
 import com.example.easytableapp.modelo.Comensal_Producto_Extra
 import com.example.easytableapp.modelo.Extra
+import com.example.easytableapp.modelo.ExtraData
 import com.example.easytableapp.modelo.Mesa
 import com.example.easytableapp.modelo.Producto
 import retrofit2.Call
@@ -257,17 +258,20 @@ object ApiController {
         idProducto: Int,
         cantidad: Int,
         entregado: Int,
-        comentario: String?,
-        onSuccess: () -> Unit,
+        comentario: String,
+        extras: List<ExtraData>,
+        onSuccess: (Int) -> Unit,
         onFailure: (Throwable) -> Unit
     ) {
-        val notas = if (comentario.isNullOrBlank()) "null" else comentario
+        Log.e("APIController", "extras: $extras")
+        val notas = if (comentario.isNullOrBlank()) " " else comentario
         val call = RetrofitClient.api.postAgregarProducto(
-            idComensal,
-            idProducto,
-            cantidad,
-            entregado,
-            notas
+            idComensal = idComensal,
+            idProducto = idProducto,
+            cantidad = cantidad,
+            entregado = entregado,
+            notas = notas,
+            extras = extras
         )
         call.enqueue(object : Callback<Map<String, String>> {
             override fun onResponse(
@@ -277,14 +281,16 @@ object ApiController {
                 Log.d("API", "Código de respuesta: ${response.code()}")
                 Log.d("API", "Cuerpo de respuesta: ${response.body().toString()}")
                 if (response.isSuccessful) {
-                    onSuccess()
+                    // Extract the "instancia" value from the response if available
+                    val instanciaGenerada = response.body()?.get("instancia")?.toIntOrNull()
+                    if (instanciaGenerada != null) {
+                        onSuccess(instanciaGenerada)
+                    } else {
+                        onFailure(Exception("Instancia no encontrada en la respuesta"))
+                    }
                 } else {
                     onFailure(
-                        Exception(
-                            "Error al agregar producto: ${response.code()} - ${
-                                response.errorBody()?.string()
-                            }"
-                        )
+                        Exception("Error en la respuesta: ${response.code()} - ${response.errorBody()?.string()}")
                     )
                 }
             }
@@ -299,7 +305,7 @@ object ApiController {
     fun agregarExtra(
         idComensal: Int,
         idProducto: Int,
-        notas: String, // 👈 nuevo parámetro requerido
+        instancia: Int, // 👈 nuevo parámetro requerido
         idExtra: Int,
         cantidad: Int,
         onSuccess: () -> Unit,
@@ -308,7 +314,7 @@ object ApiController {
         val call = RetrofitClient.api.postAgregarExtra(
             idComensal,
             idProducto,
-            notas,
+            instancia,
             idExtra,
             cantidad
         )
@@ -474,13 +480,16 @@ object ApiController {
                         )
                         productosSet.add(producto)
 
+                        val instancia = (item["Instancia"] as? Double)?.toInt() ?: 0
                         val comensalProducto = (item["Notas"] as? String)?.let {
                             Comensal_Producto(
                                 IDComensal = (item["CP_IDComensal"] as Double).toInt(),
                                 IDProducto = (item["CP_IDProducto"] as Double).toInt(),
                                 cantidad = (item["Producto_Cantidad"] as Double).toInt(),
                                 Notas = it,
-                                entregado = (item["Producto_Entregado"] as Double).toInt() == 1
+                                entregado = (item["Producto_Entregado"] as Double).toInt() == 1,
+                                Instancia = instancia
+
                             )
                         }
                         if (comensalProducto != null) {
@@ -496,13 +505,15 @@ object ApiController {
                             )
                             extrasSet.add(extra)
 
+                            val instancia = (item["Instancia"] as? Double)?.toInt() ?: 0
                             val comensalProductoExtra = (item["Notas"] as? String)?.let {
                                 Comensal_Producto_Extra(
                                     IDComensal = (item["CPE_IDComensal"] as Double).toInt(),
                                     IDProducto = (item["CPE_IDProducto"] as Double).toInt(),
                                     IDExtra = (item["CPE_IDExtra"] as Double).toInt(),
                                     cantidad = (item["Cantidad_Extra"] as Double).toInt(),
-                                    Notas = it
+                                    Notas = it,
+                                    Instancia = instancia
                                 )
                             }
                             if (comensalProductoExtra != null) {
@@ -551,6 +562,7 @@ object ApiController {
                     val comensalProductoSet = mutableSetOf<Comensal_Producto>()
                     val comensalProductoExtraSet = mutableSetOf<Comensal_Producto_Extra>()
 
+
                     for (item in data) {
                         val producto = Producto(
                             IDProducto = (item["IDProducto"] as Double).toInt(),
@@ -561,13 +573,16 @@ object ApiController {
                         )
                         productosSet.add(producto)
 
+                        val instancia = (item["Instancia"] as? Double)?.toInt() ?: 0
                         val comensalProducto = (item["Notas"] as? String)?.let {
                             Comensal_Producto(
                                 IDComensal = (item["CP_IDComensal"] as Double).toInt(),
                                 IDProducto = (item["CP_IDProducto"] as Double).toInt(),
                                 cantidad = (item["Producto_Cantidad"] as Double).toInt(),
                                 Notas = it,
-                                entregado = (item["Producto_Entregado"] as Double).toInt() == 1
+                                entregado = (item["Producto_Entregado"] as Double).toInt() == 1,
+                                Instancia = instancia
+
                             )
                         }
                         if (comensalProducto != null) {
@@ -583,12 +598,14 @@ object ApiController {
                             )
                             extrasSet.add(extra)
 
+                            val instancia = (item["Instancia"] as? Double)?.toInt() ?: 0
                             val comensalProductoExtra = Comensal_Producto_Extra(
                                 IDComensal = (item["CPE_IDComensal"] as Double).toInt(),
                                 IDProducto = (item["CPE_IDProducto"] as Double).toInt(),
                                 IDExtra = (item["CPE_IDExtra"] as Double).toInt(),
                                 cantidad = (item["Cantidad_Extra"] as Double).toInt(),
-                                Notas = item["Notas"] as? String ?: " "
+                                Notas = item["Notas"] as? String ?: " ",
+                                Instancia = instancia
                             )
                             comensalProductoExtraSet.add(comensalProductoExtra)
                         }
@@ -649,10 +666,7 @@ object ApiController {
                 onFailure(t)
             }
         })
-
     }
-
-
 
     fun actualizarEntregado(
         comensalProductoList: List<Comensal_Producto>,
@@ -674,6 +688,7 @@ object ApiController {
             val entregado = comensalProducto.entregado ?: false
             val rawNotas = comensalProducto.Notas.orEmpty()
             val safeNotas = if (rawNotas.isBlank()) "sin-nota" else rawNotas
+            val instancia = comensalProducto.Instancia
 
             val notasEncoded = URLEncoder.encode(safeNotas, StandardCharsets.UTF_8.toString())
                 .replace("+", "%20")
@@ -690,6 +705,7 @@ object ApiController {
                 comensalProducto.IDComensal,
                 comensalProducto.IDProducto,
                 notasEncoded,
+                instancia,
                 entregado
             ).enqueue(object : Callback<Void> {
                 override fun onResponse(call: Call<Void>, response: Response<Void>) {

@@ -196,7 +196,12 @@ fun ResumenComensalPantalla(navController: NavController, idComensal: Int) {
                     LazyColumn {
                         items(comensalProducto) { pedido ->
                             val producto = productos.find { it.IDProducto == pedido.IDProducto }
-                            val extrasPedido = comensalProductoExtra.filter { it.IDComensal == pedido.IDComensal && it.IDProducto == pedido.IDProducto }
+                            val extrasPedido = comensalProductoExtra.filter {
+                                it.IDComensal == pedido.IDComensal &&
+                                        it.IDProducto == pedido.IDProducto &&
+                                        it.Instancia == pedido.Instancia
+                            }
+
                             // Contenedor de cada producto
                             Column (
                                 modifier = Modifier

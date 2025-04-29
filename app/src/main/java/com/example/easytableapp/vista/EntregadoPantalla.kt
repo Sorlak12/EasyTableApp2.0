@@ -56,11 +56,12 @@ fun EntregadoPantalla(navController: NavController, idMesa: Int) {
     val groupedProductos = comensalProducto
         .groupBy { pedido ->
             val extrasKey = comensalProductoExtra
-                .filter { it.IDComensal == pedido.IDComensal && it.IDProducto == pedido.IDProducto }
+                .filter { it.IDComensal == pedido.IDComensal && it.IDProducto == pedido.IDProducto && it.Instancia == pedido.Instancia }
                 .sortedBy { it.IDExtra }
                 .joinToString("-") { "${it.IDExtra}:${it.cantidad}" }
 
-            Triple(pedido.IDComensal, pedido.IDProducto, pedido.Notas.orEmpty() + "#" + extrasKey)
+            Triple(pedido.IDComensal, pedido.IDProducto, "${pedido.Notas.orEmpty()}#${pedido.Instancia}")
+
         }
         .map { (_, pedidos) ->
             val first = pedidos.first()
@@ -186,8 +187,10 @@ fun EntregadoPantalla(navController: NavController, idMesa: Int) {
 
                                 val extrasDelProducto = comensalProductoExtra.filter {
                                     it.IDProducto == pedidoAgrupado.IDProducto &&
-                                            it.IDComensal == pedidoAgrupado.IDComensal
+                                            it.IDComensal == pedidoAgrupado.IDComensal &&
+                                            it.Instancia == pedidoAgrupado.Instancia
                                 }
+
 
                                 Column (
                                     modifier = Modifier
@@ -217,7 +220,7 @@ fun EntregadoPantalla(navController: NavController, idMesa: Int) {
 
                                                 val updatedList = comensalProducto.map {
                                                     val currentExtrasKey = comensalProductoExtra
-                                                        .filter { extra -> extra.IDProducto == it.IDProducto && extra.IDComensal == it.IDComensal }
+                                                        .filter { extra -> extra.IDProducto == it.IDProducto && extra.IDComensal == it.IDComensal && extra.Instancia == it.Instancia }
                                                         .sortedBy { extra -> extra.IDExtra }
                                                         .joinToString("-") { extra -> "${extra.IDExtra}:${extra.cantidad}" }
 
@@ -284,7 +287,8 @@ fun EntregadoPantalla(navController: NavController, idMesa: Int) {
 
                                 val extrasDelProducto = comensalProductoExtra.filter {
                                     it.IDProducto == pedidoAgrupado.IDProducto &&
-                                            it.IDComensal == pedidoAgrupado.IDComensal
+                                            it.IDComensal == pedidoAgrupado.IDComensal &&
+                                            it.Instancia == pedidoAgrupado.Instancia
                                 }
 
                                 Column (
@@ -314,7 +318,7 @@ fun EntregadoPantalla(navController: NavController, idMesa: Int) {
 
                                                 val updatedList = comensalProducto.map {
                                                     val currentExtrasKey = comensalProductoExtra
-                                                        .filter { extra -> extra.IDProducto == it.IDProducto && extra.IDComensal == it.IDComensal }
+                                                        .filter { extra -> extra.IDProducto == it.IDProducto && extra.IDComensal == it.IDComensal && extra.Instancia == it.Instancia }
                                                         .sortedBy { extra -> extra.IDExtra }
                                                         .joinToString("-") { extra -> "${extra.IDExtra}:${extra.cantidad}" }
 
@@ -375,6 +379,7 @@ fun EntregadoPantalla(navController: NavController, idMesa: Int) {
                                 onClick = {
                                     ApiController.actualizarEntregado(
                                         comensalProducto,
+
                                         onSuccess = { success ->
                                             if (success) {
                                                 showSaveButton = false

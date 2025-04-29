@@ -5,5 +5,6 @@ data class Comensal_Producto_Extra(
     val IDProducto: Int,
     val Notas: String, // 🔑 clave obligatoria para coincidir con comensal_producto
     val IDExtra: Int,
-    val cantidad: Int
+    val cantidad: Int,
+    val Instancia: Int
 )

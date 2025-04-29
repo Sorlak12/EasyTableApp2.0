@@ -228,7 +228,7 @@ fun ResumenMesaPantalla(navController: NavController, idMesa: Int) {
                                     // Recorremos los productos de este comensal
                                     comensalProductos.forEach { pedido ->
                                         val producto = productos.find { it.IDProducto == pedido.IDProducto } // Buscar el producto
-                                        val extrasDelProducto = comensalProductoExtra.filter { it.IDProducto == pedido.IDProducto && it.IDComensal == pedido.IDComensal } // Buscar los extras del producto
+                                        val extrasDelProducto = comensalProductoExtra.filter { it.IDProducto == pedido.IDProducto && it.IDComensal == pedido.IDComensal && it.Instancia == pedido.Instancia} // Buscar los extras del producto
 
                                         // Mostrar el producto y su cantidad
                                         Column (
