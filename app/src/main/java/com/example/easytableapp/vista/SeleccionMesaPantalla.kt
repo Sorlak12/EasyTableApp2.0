@@ -141,9 +141,6 @@ fun SeleccionMesaPantalla(navController: NavController, idPdv: Int){
                                 Text(text = "Mesa ${mesa.IDMesa}", fontSize = 16.sp)
                             }
                         }
-                        if (rowItems.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f)) // Espacio para alinear el botón
-                        }
                     }
                 }
             }

@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -184,7 +185,7 @@ fun ProductoConAgregarButton(idComensal: Int, idProducto: Int, extras: List<Extr
                     TextField(
                         value = inputUsuario.value,
                         onValueChange = { inputUsuario.value = it },
-                        label = { Text("Comentario") },
+                        label = { Text("Comentario", fontWeight = FontWeight.Normal) },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(16.dp))

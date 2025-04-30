@@ -145,7 +145,7 @@ fun ListaCategorias(navController: NavController, idMesa: Int, idComensal: Int) 
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 )
             }
 
