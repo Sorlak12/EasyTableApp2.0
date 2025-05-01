@@ -172,6 +172,15 @@ app.get("/categorias/:idMesa", (req, res) => {
     });
 });
 
+// GET categorias por PDV
+app.get("/categorias/pdv/:idPDV", (req, res) => {
+    const idPDV = req.params.idPDV;
+    db.query("SELECT * FROM categoria WHERE IDPDV = ?", [idPDV], (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
 //GET productos por categoría
 app.get("/productos/categoria/:idCategoria", (req, res) => {
     const idCategoria = req.params.idCategoria;

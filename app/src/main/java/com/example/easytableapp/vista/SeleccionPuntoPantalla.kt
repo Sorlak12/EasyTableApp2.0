@@ -156,7 +156,7 @@ fun SeleccionPuntoPantalla(navController: NavController) {
                 contentAlignment = Alignment.BottomCenter
             ) {
                 Text(
-                    text = "Versión 2.0",
+                    text = "Versión 2.1",
                     fontSize = 12.sp,
                     modifier = Modifier.padding(8.dp)
                 )

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,10 +43,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.compose.material3.AlertDialog
 
 import com.example.easytableapp.modelo.Categoria
 import com.example.easytableapp.modelo.Comensal
 import com.example.easytableapp.controlador.ApiController
+import com.example.easytableapp.ui.purple
 
 @Composable
 fun ListaCategorias(navController: NavController, idMesa: Int, idComensal: Int) {
@@ -55,6 +58,9 @@ fun ListaCategorias(navController: NavController, idMesa: Int, idComensal: Int) 
     val listaCategorias = remember { mutableStateListOf<Categoria>() }
     var searchQuery by remember { mutableStateOf("") } // Estado para almacenar la búsqueda
     var comensalLocal by remember { mutableStateOf<Comensal?>(null) }
+    // Dialogo para cambiar PDV
+    val showPDVDialog = remember { mutableStateOf(false) }
+    val selectedPDV = remember { mutableStateOf("Cambiar carta") } // Estado para almacenar el PDV seleccionado
     LaunchedEffect(Unit) {
         // Solicitud para obtener categorias
         ApiController.obtenerCategorias( idMesa,
@@ -103,6 +109,125 @@ fun ListaCategorias(navController: NavController, idMesa: Int, idComensal: Int) 
                         contentDescription = "Volver"
                     )
                 }
+            }
+            Button (
+                onClick = {
+                    showPDVDialog.value = true
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = purple,
+                    contentColor = Color.Black
+                ),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(horizontal = 8.dp)
+            ) {
+                Text(selectedPDV.value)
+            }
+            if (showPDVDialog.value) {
+                AlertDialog (
+                    onDismissRequest = { showPDVDialog.value = false },
+                    title = { Text("Cambiar carta") },
+                    text = {
+                        Column (
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Button (
+                                modifier = Modifier.width(150.dp),
+                                onClick = {
+                                    // Cambiar lista de categorias por la de otro PDV
+                                    ApiController.obtenerCategoriasPDV(1,
+                                        { categorias ->
+                                            listaCategorias.clear()
+                                            listaCategorias.addAll(categorias)
+                                            isLoading.value = false
+                                        },
+                                        {
+                                            Log.e("APIGCA", "Error: ${it.localizedMessage}")
+                                            isLoading.value = false
+                                        }
+                                    )
+                                    selectedPDV.value = "Carta: Restaurant"
+                                    showPDVDialog.value = false
+                                },
+                                colors = ButtonDefaults.buttonColors (
+                                    containerColor = purple,
+                                    contentColor = Color.Black
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Restaurant")
+                            }
+                            Button (
+                                modifier = Modifier.width(150.dp),
+                                onClick = {
+                                    // Cambiar lista de categorias por la de otro PDV
+                                    ApiController.obtenerCategoriasPDV(2,
+                                        { categorias ->
+                                            listaCategorias.clear()
+                                            listaCategorias.addAll(categorias)
+                                            isLoading.value = false
+                                        },
+                                        {
+                                            Log.e("APIGCA", "Error: ${it.localizedMessage}")
+                                            isLoading.value = false
+                                        }
+                                    )
+                                    selectedPDV.value = "Carta: Bar"
+                                    showPDVDialog.value = false
+                                },
+                                colors = ButtonDefaults.buttonColors (
+                                    containerColor = purple,
+                                    contentColor = Color.Black
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Bar")
+                            }
+                            Button (
+                                modifier = Modifier.width(150.dp),
+                                onClick = {
+                                    // Cambiar lista de categorias por la de otro PDV
+                                    ApiController.obtenerCategoriasPDV(3,
+                                        { categorias ->
+                                            listaCategorias.clear()
+                                            listaCategorias.addAll(categorias)
+                                            isLoading.value = false
+                                        },
+                                        {
+                                            Log.e("APIGCA", "Error: ${it.localizedMessage}")
+                                            isLoading.value = false
+                                        }
+                                    )
+                                    selectedPDV.value = "Carta: Cafetería"
+                                    showPDVDialog.value = false
+                                },
+                                colors = ButtonDefaults.buttonColors (
+                                    containerColor = purple,
+                                    contentColor = Color.Black
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Cafetería")
+                            }
+                        }
+                    },
+                    confirmButton = {},
+                    dismissButton = {
+                        Button (
+                            onClick = { showPDVDialog.value = false },
+                            colors = ButtonDefaults.buttonColors (
+                                containerColor = Color.LightGray,
+                                contentColor = Color.Black
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Cancelar")
+                        }
+                    }
+                )
             }
         }
 

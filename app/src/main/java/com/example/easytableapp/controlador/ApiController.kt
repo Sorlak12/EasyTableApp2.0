@@ -153,6 +153,34 @@ object ApiController {
         })
     }
 
+    // Obtener categorias por IDPDV
+    fun obtenerCategoriasPDV(idPDV: Int, onSuccess: (MutableList<Categoria>) -> Unit, onFailure: (Throwable) -> Unit) {
+        val call = RetrofitClient.api.getCategoriasPorPDV(idPDV)
+        call.enqueue(object : Callback<List<Categoria>> {
+            override fun onResponse(
+                call: Call<List<Categoria>>,
+                response: Response<List<Categoria>>
+            ) {
+                if (response.isSuccessful) {
+                    onSuccess(response.body()?.toMutableList() ?: mutableListOf())
+                } else {
+                    onFailure(
+                        Exception(
+                            "Error al obtener categorías: ${response.code()} - ${
+                                response.errorBody()?.string()
+                            }"
+                        )
+                    )
+                }
+            }
+
+            override fun onFailure(call: Call<List<Categoria>>, t: Throwable) {
+                Log.e("API", "Error: ${t.localizedMessage}")
+                onFailure(t)
+            }
+        })
+    }
+
     fun obtenerProductosPorCategoria(
         idCategoria: Int,
         onSuccess: (List<Producto>) -> Unit,
