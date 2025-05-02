@@ -409,7 +409,7 @@ object ApiController {
         onSuccess: () -> Unit,
         onFailure: (Throwable) -> Unit
     ) {
-       val call = RetrofitClient.api.deleteEliminarProductoConCantidad(
+        val call = RetrofitClient.api.deleteEliminarProductoConCantidad(
             idProducto, idComensal, notas, instancia, cantidad
         )
 
@@ -429,6 +429,7 @@ object ApiController {
             }
         })
     }
+
 
 
     fun eliminarComensal(idComensal: Int, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit) {

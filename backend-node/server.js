@@ -721,53 +721,47 @@ app.delete("/eliminarProducto/:idProducto/:idComensal/:instancia", (req, res) =>
 
 
 // DELETE para eliminar un producto de un comensal con cantidad
-app.delete("/eliminarProductoConCantidad/:idProducto/:idComensal/:notas/:cantidad", (req, res) => {
-    const { idProducto, idComensal, notas, cantidad } = req.params;
-    console.log("🗑️ Intentando eliminar producto:");
-        console.log("🆔 IDProducto:", idProducto);
-        console.log("🆔 IDComensal:", idComensal);
+app.delete("/eliminarProductoConCantidad/:idProducto/:idComensal/:notas/:instancia/:cantidad", (req, res) => {
+    const { idProducto, idComensal, notas, instancia, cantidad } = req.params;
+    const instanciaNum = parseInt(instancia);
+    const cantidadNum = parseInt(cantidad);
+    const notasDecodificadas = decodeURIComponent(notas);
 
-    // Paso 1: Restar la cantidad
+    console.log("🗑️ Intentando eliminar producto con cantidad:");
+    console.log("🆔 IDProducto:", idProducto);
+    console.log("🆔 IDComensal:", idComensal);
+    console.log("📄 Notas:", notasDecodificadas);
+    console.log("🔁 Instancia:", instanciaNum);
+    console.log("➖ Cantidad a restar:", cantidadNum);
+
+    // Paso 1: Restar cantidad
     db.query(
-        "UPDATE comensal_producto SET Cantidad = Cantidad - ? WHERE IDComensal = ? AND IDProducto = ? AND Notas = ?",
-        [cantidad, idComensal, idProducto, notas],
+        "UPDATE comensal_producto SET Cantidad = Cantidad - ? WHERE IDComensal = ? AND IDProducto = ? AND Notas = ? AND Instancia = ?",
+        [cantidadNum, idComensal, idProducto, notasDecodificadas, instanciaNum],
         (err, result) => {
             if (err) {
                 console.error("❌ Error al restar la cantidad:", err);
-                return res.status(500).json({
-                    error: "Error al actualizar la cantidad del producto",
-                    details: err.message
-                });
+                return res.status(500).json({ error: err.message });
             }
 
             if (result.affectedRows === 0) {
-                console.warn("⚠️ No se encontró ningún registro para actualizar:", {
-                    idComensal,
-                    idProducto,
-                    notas
-                });
-                return res.status(404).json({
-                    error: "No se encontró el producto para el comensal con las notas indicadas"
-                });
+                console.warn("⚠️ No se encontró el producto con esas claves.");
+                return res.status(404).json({ error: "Producto no encontrado." });
             }
 
-            // Paso 2: Verificar si la cantidad ahora es <= 0
+            // Paso 2: Verificar cantidad actual
             db.query(
-                "SELECT Cantidad FROM comensal_producto WHERE IDComensal = ? AND IDProducto = ? AND Notas = ?",
-                [idComensal, idProducto, notas],
+                "SELECT Cantidad FROM comensal_producto WHERE IDComensal = ? AND IDProducto = ? AND Notas = ? AND Instancia = ?",
+                [idComensal, idProducto, notasDecodificadas, instanciaNum],
                 (err2, resultCantidad) => {
                     if (err2) {
-                        console.error("❌ Error al verificar la cantidad actual:", err2);
-                        return res.status(500).json({
-                            error: "Error al verificar la cantidad actual del producto",
-                            details: err2.message
-                        });
+                        console.error("❌ Error al verificar cantidad:", err2);
+                        return res.status(500).json({ error: err2.message });
                     }
 
                     const cantidadActual = resultCantidad[0]?.Cantidad;
 
                     if (cantidadActual > 0) {
-                        // No es necesario eliminar, solo devolver éxito
                         return res.json({
                             message: "Cantidad actualizada correctamente",
                             actualizado: result.affectedRows,
@@ -775,38 +769,27 @@ app.delete("/eliminarProductoConCantidad/:idProducto/:idComensal/:notas/:cantida
                         });
                     }
 
-                    // Paso 3: Eliminar los extras (primero, por la constraint)
+                    // Paso 3: Eliminar extras primero
                     db.query(
-                        "DELETE FROM comensal_producto_extra WHERE IDComensal = ? AND IDProducto = ?",
-                        [idComensal, idProducto],
+                        "DELETE FROM comensal_producto_extra WHERE IDComensal = ? AND IDProducto = ? AND Notas = ? AND Instancia = ?",
+                        [idComensal, idProducto, notasDecodificadas, instanciaNum],
                         (err3, result3) => {
                             if (err3) {
                                 console.error("❌ Error al eliminar extras:", err3);
-                                return res.status(500).json({
-                                    error: "Error al eliminar extras del producto",
-                                    details: err3.message
-                                });
+                                return res.status(500).json({ error: err3.message });
                             }
 
-                            // Paso 4: Eliminar el producto ahora que no hay referencias
+                            // Paso 4: Eliminar producto
                             db.query(
-                                "DELETE FROM comensal_producto WHERE IDComensal = ? AND IDProducto = ? AND Notas = ?",
-                                [idComensal, idProducto, notas],
+                                "DELETE FROM comensal_producto WHERE IDComensal = ? AND IDProducto = ? AND Notas = ? AND Instancia = ?",
+                                [idComensal, idProducto, notasDecodificadas, instanciaNum],
                                 (err4, result4) => {
                                     if (err4) {
                                         console.error("❌ Error al eliminar producto:", err4);
-                                        return res.status(500).json({
-                                            error: "Error al eliminar el producto",
-                                            details: err4.message
-                                        });
+                                        return res.status(500).json({ error: err4.message });
                                     }
 
-                                    console.log("✅ Operación completada:", {
-                                        actualizado: result.affectedRows,
-                                        extrasEliminados: result3.affectedRows,
-                                        productoEliminado: result4.affectedRows
-                                    });
-
+                                    console.log("✅ Producto y extras eliminados con éxito.");
                                     res.json({
                                         message: "Producto y extras eliminados correctamente",
                                         actualizado: result.affectedRows,
