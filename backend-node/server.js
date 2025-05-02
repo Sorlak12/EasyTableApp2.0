@@ -694,23 +694,38 @@ app.delete("/eliminarProducto/:idProducto/:idComensal/:instancia", (req, res) =>
     const idComensal = req.params.idComensal;
     const instancia = parseInt(req.params.instancia);
 
+
+
     const deleteExtrasQuery = "DELETE FROM comensal_producto_extra WHERE IDComensal = ? AND IDProducto = ? AND Instancia = ?";
     const deleteProductoQuery = "DELETE FROM comensal_producto WHERE IDComensal = ? AND IDProducto = ? AND Instancia = ?";
 
     db.query(deleteExtrasQuery, [idComensal, idProducto, instancia], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error("❌ Error al eliminar extras:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
+
+        console.log(`✅ Extras eliminados: ${result.affectedRows} fila(s)`);
 
         db.query(deleteProductoQuery, [idComensal, idProducto, instancia], (err, result) => {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) {
+                console.error("❌ Error al eliminar producto:", err.message);
+                return res.status(500).json({ error: err.message });
+            }
+
+            console.log(`✅ Producto eliminado: ${result.affectedRows} fila(s)`);
             res.json({ message: "Producto eliminado" });
         });
     });
-
 });
+
 
 // DELETE para eliminar un producto de un comensal con cantidad
 app.delete("/eliminarProductoConCantidad/:idProducto/:idComensal/:notas/:cantidad", (req, res) => {
     const { idProducto, idComensal, notas, cantidad } = req.params;
+    console.log("🗑️ Intentando eliminar producto:");
+        console.log("🆔 IDProducto:", idProducto);
+        console.log("🆔 IDComensal:", idComensal);
 
     // Paso 1: Restar la cantidad
     db.query(

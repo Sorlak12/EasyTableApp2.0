@@ -404,26 +404,32 @@ object ApiController {
         idProducto: Int,
         idComensal: Int,
         notas: String,
+        instancia: Int,
         cantidad: Int,
         onSuccess: () -> Unit,
         onFailure: (Throwable) -> Unit
     ) {
-        val call = RetrofitClient.api.deleteEliminarProductoConCantidad(idProducto, idComensal, notas, cantidad)
+       val call = RetrofitClient.api.deleteEliminarProductoConCantidad(
+            idProducto, idComensal, notas, instancia, cantidad
+        )
+
         call.enqueue(object : Callback<Void> {
             override fun onResponse(call: Call<Void>, response: Response<Void>) {
                 if (response.isSuccessful) {
                     onSuccess()
                 } else {
-                    Log.e("API", "Error en la respuesta: ${response.message()}")
+                    Log.e("API", "❌ Error en la respuesta: ${response.code()} - ${response.message()}")
+                    onFailure(Throwable("Error en la respuesta: ${response.message()}"))
                 }
             }
 
             override fun onFailure(call: Call<Void>, t: Throwable) {
-                Log.e("API", "Error: ${t.localizedMessage}")
+                Log.e("API", "❌ Error de red: ${t.localizedMessage}")
                 onFailure(t)
             }
         })
     }
+
 
     fun eliminarComensal(idComensal: Int, onSuccess: () -> Unit, onFailure: (Throwable) -> Unit) {
         val call = RetrofitClient.api.deleteEliminarComensal(idComensal)

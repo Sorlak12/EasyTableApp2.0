@@ -119,13 +119,15 @@ interface ApiService {
     ): Call<Void>
 
     //elimiar producto de comensal con cantidad
-    @DELETE("eliminarProductoConCantidad/{idProducto}/{idComensal}/{notas}/{cantidad}")
+    @DELETE("eliminarProductoConCantidad/{idProducto}/{idComensal}/{notas}/{instancia}/{cantidad}")
     fun deleteEliminarProductoConCantidad(
         @Path("idProducto") idProducto: Int,
         @Path("idComensal") idComensal: Int,
         @Path("notas") notas: String,
+        @Path("instancia") instancia: Int,
         @Path("cantidad") cantidad: Int
     ): Call<Void>
+
 
 
     // Solicitud PUT para marcar un comensal como pagado
