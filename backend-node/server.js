@@ -8,21 +8,30 @@ app.use(express.json());
 app.use(cors());
 
 // ✅ Create a MySQL connection
-const db = mysql.createConnection({
+const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT,
+    waitForConnections: true,
+    connectionLimit: 30,
+    queueLimit: 0,
+    idleTimeout: 60000,
 });
 
-// ✅ Connect to MySQL
-db.connect(err => {
+// ✅ Test MySQL connection
+db.query("SELECT 1", (err) => {
     if (err) {
         console.error("❌ Database connection failed:", err);
-        return;
+    } else {
+        console.log("✅ Connected to MySQL!");
     }
-    console.log("✅ Connected to MySQL!");
+});
+
+// Detect errors in the connection pool
+db.on('error', (err) => {
+    console.error(`[${getTimestamp()}] ❌ Error crítico en la conexión a la base de datos:`, err.message);
 });
 
 // ✅ Test Route
@@ -34,16 +43,22 @@ app.get("/", (req, res) => {
 
 // Obtiene a todos los usuarios
 app.get("/users", (req, res) => {
-    db.query("SELECT * FROM usuario", (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+    db.query("SELECT * FROM Usuario", (err, results) => {
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al obtener usuarios:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
         res.json(results);
     });
 });
 
 // Obtiene todos los sectores
 app.get("/pdv", (req, res) => {
-    db.query("SELECT * FROM pdv", (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+    db.query("SELECT * FROM PDV", (err, results) => {
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al obtener PDVs:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
         res.json(results);
     });
 });
@@ -51,8 +66,11 @@ app.get("/pdv", (req, res) => {
 //GET mesa por ID
 app.get("/mesa/:idMesa", (req, res) => {
     const idMesa = req.params.idMesa;
-    db.query("SELECT * FROM mesa WHERE IDMesa = ?", [idMesa], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+    db.query("SELECT * FROM Mesa WHERE IDMesa = ?", [idMesa], (err, results) => {
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al obtener mesa:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
         res.json(results[0]);
     });
 });
@@ -60,20 +78,26 @@ app.get("/mesa/:idMesa", (req, res) => {
 //GET mesas por sector
 app.get("/mesas/:idPdv", (req, res) => {
     const idPdv = req.params.idPdv;
-    db.query(`SELECT 
-            mesa.*, 
-            pdv.*, 
-            EXISTS(SELECT 1 FROM comensal c WHERE c.IDMesa = mesa.IDMesa) as TieneComensales 
-            FROM mesa INNER JOIN pdv WHERE mesa.IDPDV = pdv.IDPDV and mesa.IDPDV = ?`, [idPdv], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+    db.query(`SELECT Mesa.*, PDV.*,
+        EXISTS(SELECT 1 FROM Comensal c WHERE c.IDMesa = Mesa.IDMesa) AS TieneComensales
+        FROM Mesa
+        INNER JOIN PDV ON Mesa.IDPDV = PDV.IDPDV
+        WHERE Mesa.IDPDV = ?`, [idPdv], (err, results) => {
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al obtener mesas:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
         res.json(results);
     });
 });
 
 app.get("/comensales/mesa/:idMesa", (req, res) => {
     const idMesa = req.params.idMesa;
-    db.query("SELECT * FROM comensal WHERE IDMesa = ?", [idMesa], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+    db.query("SELECT * FROM Comensal WHERE IDMesa = ?", [idMesa], (err, results) => {
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al obtener comensales de la mesa:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
         res.json(results);
     });
 });
@@ -81,22 +105,22 @@ app.get("/comensales/mesa/:idMesa", (req, res) => {
 // Ruta para calcular el total de un comensal de una mesa
 app.get("/totalComensal/comensal/:idComensal", (req, res) => {
     const idComensal = req.params.idComensal;
-    const idMesa = req.params.idMesa;
-    db.query(`SELECT
-            (SELECT COALESCE(SUM(p.ValorProducto * cp.Cantidad), 0)
-            FROM Comensal_Producto cp
-            JOIN Producto p ON cp.IDProducto = p.IDProducto
-            WHERE cp.IDComensal = c.IDComensal)
-            +
-            (SELECT COALESCE(SUM(e.ValorExtra * cpe.Cantidad), 0)
-            FROM Comensal_Producto_Extra cpe
-            JOIN Extra e ON cpe.IDExtra = e.IDExtra
-            WHERE cpe.IDComensal = c.IDComensal)
-            AS TotalPedido
-            FROM Comensal c
-            WHERE c.IDComensal = ?;`, [idComensal], (err, results) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json(results);
+    db.query(`SELECT 
+        (SELECT COALESCE(SUM(p.ValorProducto * cp.Cantidad), 0)
+        FROM Comensal_Producto cp
+        JOIN Producto p ON cp.IDProducto = p.IDProducto
+        WHERE cp.IDComensal = c.IDComensal)
+        +
+        (SELECT COALESCE(SUM(e.ValorExtra * cpe.Cantidad), 0)
+        FROM Comensal_Producto_Extra cpe
+        JOIN Extra e ON cpe.IDExtra = e.IDExtra
+        WHERE cpe.IDComensal = c.IDComensal) AS TotalPedido 
+        FROM Comensal c WHERE c.IDComensal = ?;`, [idComensal], (err, results) => {
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al calcular total del comensal:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(results);
     });
 });
 
@@ -115,7 +139,10 @@ app.get("/totalMesa/mesa/:idMesa", (req, res) => {
         JOIN Extra e ON cpe.IDExtra = e.IDExtra
         WHERE c.IDMesa = ? and c.Pagado = 0)
         AS TotalMesa;`, [idMesa, idMesa], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al calcular total de la mesa:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
         res.json(results);
     });
 });
@@ -154,7 +181,10 @@ app.get("/detallesmesa/:idMesa", (req, res) => {
             AND CP.Instancia = CPE.Instancia
         LEFT JOIN Extra E ON CPE.IDExtra = E.IDExtra
         WHERE C.IDMesa = ?;`, [idMesa], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al obtener detalles de la mesa:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
         res.json(results);
     });
 });
@@ -167,7 +197,10 @@ app.get("/categorias/:idMesa", (req, res) => {
         JOIN mesa m ON c.IDPDV = m.IDPDV
         WHERE m.IDMesa = ?
         order by c.NombreCategoria;`, [idMesa], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al obtener categorías:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
         res.json(results);
     });
 });
@@ -176,7 +209,10 @@ app.get("/categorias/:idMesa", (req, res) => {
 app.get("/categorias/pdv/:idPDV", (req, res) => {
     const idPDV = req.params.idPDV;
     db.query("SELECT * FROM categoria WHERE IDPDV = ?", [idPDV], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al obtener categorías por PDV:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
         res.json(results);
     });
 });
@@ -187,7 +223,10 @@ app.get("/productos/categoria/:idCategoria", (req, res) => {
     db.query("SELECT * FROM producto INNER JOIN categoria WHERE " +
         "categoria.IDCategoria = producto.IDCategoria and producto.IDCategoria = ?",
         [idCategoria], (err, results) => {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) {
+                console.error(`[${getTimestamp()}] ❌ Error al obtener productos por categoría:`, err.message);
+                return res.status(500).json({ error: err.message });
+            }
             res.json(results);
         });
 });
@@ -196,7 +235,10 @@ app.get("/productos/categoria/:idCategoria", (req, res) => {
 app.get("/producto/:idProducto", (req, res) => {
     const idProducto = req.params.idProducto;
     db.query("SELECT * FROM producto WHERE IDProducto = ?", [idProducto], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al obtener producto por ID:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
         res.json(results[0]);
     });
 });
@@ -204,7 +246,10 @@ app.get("/producto/:idProducto", (req, res) => {
 //GET extras
 app.get("/extras", (req, res) => {
     db.query("SELECT * FROM extra", (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al obtener extras:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
         res.json(results);
     });
 });
@@ -215,7 +260,10 @@ app.get("/productos/pdv/:idPDV", (req, res) => {
     db.query("SELECT * FROM producto INNER JOIN pdv WHERE " +
         "pdv.IDPDV = producto.IDPDV and producto.IDPDV = ?",
         [idPDV], (err, results) => {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) {
+                console.error(`[${getTimestamp()}] ❌ Error al obtener productos por PDV:`, err.message);
+                return res.status(500).json({ error: err.message });
+            }
             res.json(results);
         });
 })
@@ -224,7 +272,10 @@ app.get("/productos/pdv/:idPDV", (req, res) => {
 app.get("/comensales/mesa/:idMesa", (req, res) => {
     const idMesa = req.params.idMesa;
     db.query("SELECT * FROM comensal WHERE IDMesa = ?", [idMesa], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al obtener comensales por mesa:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
         res.json(results);
     });
 });
@@ -233,7 +284,10 @@ app.get("/comensales/mesa/:idMesa", (req, res) => {
 app.get("/comensal/:idComensal", (req, res) => {
     const idComensal = req.params.idComensal;
     db.query("SELECT * FROM comensal WHERE IDComensal = ?", [idComensal], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al obtener información del comensal:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
         res.json(results);
     });
 });
@@ -270,7 +324,10 @@ app.get("/comensal/productos/:idComensal", (req, res) => {
             AND CP.Instancia = CPE.Instancia
         LEFT JOIN Extra E ON CPE.IDExtra = E.IDExtra
         WHERE C.IDComensal = ?`, [idComensal], (err, results) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al obtener productos del comensal:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
         //console.log(results);
         res.json(results);
     });
@@ -280,8 +337,11 @@ app.get("/comensal/productos/:idComensal", (req, res) => {
 app.post("/agregarComensal/:nombreComensal/:idMesa", (req, res) => {
     const { nombreComensal, idMesa } = req.params;
     db.query("INSERT INTO comensal (NombreComensal, IDMesa, Pagado) VALUES (?, ?, 0)", [nombreComensal, idMesa], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: "Comensal agregado" });
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al agregar comensal:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
+        res.json({ message: "Comensal agregado correctamente" });
     });
 });
 
@@ -428,7 +488,7 @@ app.post("/agregarProducto/:idComensal/:idProducto/:cantidad/:entregado/:notas",
 
     db.query(buscarNotasQuery, [idComensal, idProducto], (err, results) => {
         if (err) {
-            console.error("❌ Error al buscar instancias previas:", err);
+            console.error(`[${getTimestamp()}] ❌ Error al buscar instancias previas:`, err);
             return res.status(500).json({ error: err.message });
         }
 
@@ -472,20 +532,20 @@ app.post("/agregarProducto/:idComensal/:idProducto/:cantidad/:entregado/:notas",
 
         console.log("Se debe aumentar ronda", seDebeAumentarRonda);
         console.log("Notas filtradas", notasFiltradas);
-        console.log("Not Final: ", notaFinal)
+        console.log("Nota Final: ", notaFinal)
 
         if (notasFiltradas.length === 0) {
             notaFinal = notas;
-            console.log("🟢 Primera vez con esta nota. Se inserta como está:", notaFinal);
+            console.log(`[${getTimestamp()}] 🟢 Primera vez con esta nota. Se inserta como está:`, notaFinal);
 
         } else if (seDebeAumentarRonda) {
             const nuevaRonda = `Ronda ${maxRonda + 1}`;
             notaFinal = notas.trim()
                 ? `${nuevaRonda} - ${notas}`
                 : nuevaRonda;
-            console.log("📝 Ronda incrementada. Nota final:", notaFinal);
+            console.log(`[${getTimestamp()}] 📝 Ronda incrementada. Nota final:`, notaFinal);
         } else {
-            console.log("⏸️ Nota repetida no entregada. Se mantiene la nota:", notaFinal);
+            console.log(`[${getTimestamp()}] ⏸️ Nota repetida no entregada. Se mantiene la nota:`, notaFinal);
         }
 
         // Ahora comparar instancias con la notaFinal correcta
@@ -497,13 +557,13 @@ app.post("/agregarProducto/:idComensal/:idProducto/:cantidad/:entregado/:notas",
 
         db.query(buscarQuery, [idComensal, idProducto, notaFinal], (err, results) => {
             if (err) {
-                console.error("❌ Error al buscar instancias previas:", err);
+                console.error(`[${getTimestamp()}] ❌ Error al buscar instancias previas:`, err);
                 return res.status(500).json({ error: err.message });
             }
 
             const revisarInstancia = (index) => {
                 if (index >= results.length) {
-                    console.log("⚠️ No se encontró una instancia coincidente. Creando nueva instancia...");
+                    console.log(`[${getTimestamp()}] ⚠️ No se encontró una instancia coincidente. Creando nueva instancia...`);
                     crearNuevaInstancia();
                     return;
                 }
@@ -519,7 +579,7 @@ app.post("/agregarProducto/:idComensal/:idProducto/:cantidad/:entregado/:notas",
 
                 db.query(queryExtras, [idComensal, idProducto, instancia], (err, extrasExistentes) => {
                     if (err) {
-                        console.error("❌ Error al consultar extras:", err);
+                        console.error(`[${getTimestamp()}] ❌ Error al consultar extras:`, err);
                         return res.status(500).json({ error: err.message });
                     }
 
@@ -533,7 +593,7 @@ app.post("/agregarProducto/:idComensal/:idProducto/:cantidad/:entregado/:notas",
                     const nuevos = normalizarNuevos(extras);
 
                     if (existentes === nuevos) {
-                        console.log(`✅ Coincidencia encontrada en instancia ${instancia}. Actualizando cantidad...`);
+                        console.log(`[${getTimestamp()}] ✅ Coincidencia encontrada en instancia ${instancia}. Actualizando cantidad...`);
                         const updateQuery = `
                             UPDATE comensal_producto
                             SET Cantidad = Cantidad + ?
@@ -541,10 +601,10 @@ app.post("/agregarProducto/:idComensal/:idProducto/:cantidad/:entregado/:notas",
                         `;
                         db.query(updateQuery, [cantidad, idComensal, idProducto, notaFinal, instancia], (err) => {
                             if (err) {
-                                console.error("❌ Error al actualizar cantidad:", err);
+                                console.error(`[${getTimestamp()}] ❌ Error al actualizar cantidad:`, err);
                                 return res.status(500).json({ error: err.message });
                             }
-                            console.log(`✅ Cantidad actualizada correctamente en instancia ${instancia}.`);
+                            console.log(`[${getTimestamp()}] ✅ Cantidad actualizada correctamente en instancia ${instancia}.`);
                             return res.json({ message: "Cantidad actualizada", instancia });
                         });
                     } else {
@@ -562,12 +622,12 @@ app.post("/agregarProducto/:idComensal/:idProducto/:cantidad/:entregado/:notas",
 
                 db.query(maxQuery, [idComensal, idProducto], (err, rows) => {
                     if (err) {
-                        console.error("❌ Error al obtener max instancia:", err);
+                        console.error(`[${getTimestamp()}] ❌ Error al obtener max instancia:`, err);
                         return res.status(500).json({ error: err.message });
                     }
 
                     const nuevaInstancia = (rows[0]?.maxInstancia || 0) + 1;
-                    console.log(`🆕 Creando nueva instancia: ${nuevaInstancia}`);
+                    console.log(`[${getTimestamp()}] 🆕 Creando nueva instancia: ${nuevaInstancia}`);
 
                     const insertProducto = `
                         INSERT INTO comensal_producto (IDComensal, IDProducto, Cantidad, Entregado, Notas, Instancia)
@@ -576,14 +636,14 @@ app.post("/agregarProducto/:idComensal/:idProducto/:cantidad/:entregado/:notas",
 
                     db.query(insertProducto, [idComensal, idProducto, cantidad, entregado, notaFinal, nuevaInstancia], (err) => {
                         if (err) {
-                            console.error("❌ Error al insertar nuevo producto:", err);
+                            console.error(`[${getTimestamp()}] ❌ Error al insertar nuevo producto:`, err);
                             return res.status(500).json({ error: err.message });
                         }
 
-                        console.log(`✅ Producto insertado correctamente con instancia ${nuevaInstancia}.`);
+                        console.log(`[${getTimestamp()}] ✅ Producto insertado correctamente con instancia ${nuevaInstancia}.`);
 
                         if (extras.length === 0) {
-                            console.log("ℹ️ No hay extras para insertar.");
+                            console.log(`[${getTimestamp()}] ℹ️ No hay extras para insertar.`);
                             return res.json({ message: "Producto insertado", instancia: nuevaInstancia });
                         }
 
@@ -606,11 +666,11 @@ app.post("/agregarProducto/:idComensal/:idProducto/:cantidad/:entregado/:notas",
 
                         db.query(insertExtrasQuery, flattenedExtras, (err) => {
                             if (err) {
-                                console.error("❌ Error al insertar extras:", err);
+                                console.error(`[${getTimestamp()}] ❌ Error al insertar extras:`, err);
                                 return res.status(500).json({ error: err.message });
                             }
 
-                            console.log(`✅ Producto y extras insertados correctamente con instancia ${nuevaInstancia}.`);
+                            console.log(`[${getTimestamp()}] ✅ Producto y extras insertados correctamente con instancia ${nuevaInstancia}.`);
                             return res.json({ message: "Producto y extras insertados", instancia: nuevaInstancia });
                         });
                     });
@@ -630,7 +690,7 @@ app.post("/agregarExtra/:idComensal/:idProducto/:instancia/:idExtra/:cantidad", 
     const idExtra = req.params.idExtra;
     const cantidad = parseInt(req.params.cantidad);
 
-    console.log("📥 Datos recibidos para agregar extra:", {
+    console.log(`[${getTimestamp()}] 📥 Datos recibidos para agregar extra:`, {
         idComensal,
         idProducto,
         instancia,
@@ -646,12 +706,12 @@ app.post("/agregarExtra/:idComensal/:idProducto/:instancia/:idExtra/:cantidad", 
 
     db.query(checkQuery, [idComensal, idProducto, instancia], (checkErr, rows) => {
         if (checkErr) {
-            console.error("❌ Error al verificar existencia en comensal_producto:", checkErr);
+            console.error(`[${getTimestamp()}] ❌ Error al verificar existencia en comensal_producto:`, checkErr);
             return res.status(500).json({ error: checkErr.message });
         }
 
         if (rows.length === 0) {
-            console.warn("⚠️ No se encontró la instancia especificada en comensal_producto:", {
+            console.warn(`[${getTimestamp()}] ⚠️ No se encontró la instancia especificada en comensal_producto:`, {
                 idComensal,
                 idProducto,
                 instancia
@@ -672,11 +732,11 @@ app.post("/agregarExtra/:idComensal/:idProducto/:instancia/:idExtra/:cantidad", 
 
         db.query(insertQuery, insertParams, (err, results) => {
             if (err) {
-                console.error("❌ Error al insertar extra en comensal_producto_extra:", err);
+                console.error(`[${getTimestamp()}] ❌ Error al insertar extra en comensal_producto_extra:`, err);
                 return res.status(500).json({ error: err.message });
             }
 
-            console.log("✅ Extra agregado correctamente:", {
+            console.log(`[${getTimestamp()}] ✅ Extra agregado correctamente:`, {
                 idComensal,
                 idProducto,
                 instancia,
@@ -701,19 +761,19 @@ app.delete("/eliminarProducto/:idProducto/:idComensal/:instancia", (req, res) =>
 
     db.query(deleteExtrasQuery, [idComensal, idProducto, instancia], (err, result) => {
         if (err) {
-            console.error("❌ Error al eliminar extras:", err.message);
+            console.error(`[${getTimestamp()}] ❌ Error al eliminar extras:`, err.message);
             return res.status(500).json({ error: err.message });
         }
 
-        console.log(`✅ Extras eliminados: ${result.affectedRows} fila(s)`);
+        console.log(`[${getTimestamp()}] ✅ Extras eliminados: ${result.affectedRows} fila(s)`);
 
         db.query(deleteProductoQuery, [idComensal, idProducto, instancia], (err, result) => {
             if (err) {
-                console.error("❌ Error al eliminar producto:", err.message);
+                console.error(`[${getTimestamp()}] ❌ Error al eliminar producto:`, err.message);
                 return res.status(500).json({ error: err.message });
             }
 
-            console.log(`✅ Producto eliminado: ${result.affectedRows} fila(s)`);
+            console.log(`[${getTimestamp()}] ✅ Producto eliminado: ${result.affectedRows} fila(s)`);
             res.json({ message: "Producto eliminado" });
         });
     });
@@ -727,7 +787,7 @@ app.delete("/eliminarProductoConCantidad/:idProducto/:idComensal/:notas/:instanc
     const cantidadNum = parseInt(cantidad);
     const notasDecodificadas = decodeURIComponent(notas);
 
-    console.log("🗑️ Intentando eliminar producto con cantidad:");
+    console.log(`[${getTimestamp()}] 🗑️ Intentando eliminar producto con cantidad:`);
     console.log("🆔 IDProducto:", idProducto);
     console.log("🆔 IDComensal:", idComensal);
     console.log("📄 Notas:", notasDecodificadas);
@@ -740,12 +800,12 @@ app.delete("/eliminarProductoConCantidad/:idProducto/:idComensal/:notas/:instanc
         [cantidadNum, idComensal, idProducto, notasDecodificadas, instanciaNum],
         (err, result) => {
             if (err) {
-                console.error("❌ Error al restar la cantidad:", err);
+                console.error(`[${getTimestamp()}] ❌ Error al restar la cantidad:`, err);
                 return res.status(500).json({ error: err.message });
             }
 
             if (result.affectedRows === 0) {
-                console.warn("⚠️ No se encontró el producto con esas claves.");
+                console.warn(`[${getTimestamp()}]⚠️ No se encontró el producto con esas claves.`);
                 return res.status(404).json({ error: "Producto no encontrado." });
             }
 
@@ -755,7 +815,7 @@ app.delete("/eliminarProductoConCantidad/:idProducto/:idComensal/:notas/:instanc
                 [idComensal, idProducto, notasDecodificadas, instanciaNum],
                 (err2, resultCantidad) => {
                     if (err2) {
-                        console.error("❌ Error al verificar cantidad:", err2);
+                        console.error(`[${getTimestamp()}] ❌ Error al verificar cantidad:`, err2);
                         return res.status(500).json({ error: err2.message });
                     }
 
@@ -775,7 +835,7 @@ app.delete("/eliminarProductoConCantidad/:idProducto/:idComensal/:notas/:instanc
                         [idComensal, idProducto, notasDecodificadas, instanciaNum],
                         (err3, result3) => {
                             if (err3) {
-                                console.error("❌ Error al eliminar extras:", err3);
+                                console.error(`[${getTimestamp()}] ❌ Error al eliminar extras:`, err3);
                                 return res.status(500).json({ error: err3.message });
                             }
 
@@ -789,7 +849,7 @@ app.delete("/eliminarProductoConCantidad/:idProducto/:idComensal/:notas/:instanc
                                         return res.status(500).json({ error: err4.message });
                                     }
 
-                                    console.log("✅ Producto y extras eliminados con éxito.");
+                                    console.log(`[${getTimestamp()}] ✅ Producto y extras eliminados con éxito.`);
                                     res.json({
                                         message: "Producto y extras eliminados correctamente",
                                         actualizado: result.affectedRows,
@@ -815,14 +875,24 @@ app.delete("/eliminarComensal/:idComensal", (req, res) => {
     const queryComensal = "DELETE FROM comensal WHERE IDComensal = ?";
 
     db.query(queryExtras, [idComensal], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al eliminar extras del comensal:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
 
         db.query(queryProductos, [idComensal], (err, result) => {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) {
+                console.error(`[${getTimestamp()}] ❌ Error al eliminar productos del comensal:`, err.message);
+                return res.status(500).json({ error: err.message });
+            }
 
             db.query(queryComensal, [idComensal], (err, result) => {
-                if (err) return res.status(500).json({ error: err.message });
+                if (err) {
+                    console.error(`[${getTimestamp()}] ❌ Error al eliminar comensal:`, err.message);
+                    return res.status(500).json({ error: err.message });
+                }
 
+                console.log(`[${getTimestamp()}] ✅ Comensal eliminado ${idComensal}.`);
                 res.json({ message: "Comensal eliminado" });
             });
         });
@@ -832,7 +902,10 @@ app.delete("/eliminarComensal/:idComensal", (req, res) => {
 app.put("/pagarComensal/:idComensal" , (req, res) => {
     const idComensal = req.params.idComensal;
     db.query("UPDATE comensal SET Pagado = 1 WHERE IDComensal = ?", [idComensal], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al marcar comensal como pagado:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
         res.json({ message: "Comensal pagado" });
     });
 });
@@ -850,14 +923,24 @@ app.delete('/pagarMesa/:idMesa', (req, res) => {
     const queryComensales = "Delete from comensal where IDMesa = ?";
 
     db.query(queryExtrasComensal, [idMesa], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error(`[${getTimestamp()}] ❌ Error al eliminar extras de los comensales:`, err.message);
+            return res.status(500).json({ error: err.message });
+        }
 
         db.query(queryProductosComensal, [idMesa], (err, result) => {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) {
+                console.error(`[${getTimestamp()}] ❌ Error al eliminar productos de los comensales:`, err.message);
+                return res.status(500).json({ error: err.message });
+            }
 
             db.query(queryComensales, [idMesa], (err, result) => {
-                if (err) return res.status(500).json({ error: err.message });
+                if (err) {
+                    console.error(`[${getTimestamp()}] ❌ Error al eliminar comensales:`, err.message);
+                    return res.status(500).json({ error: err.message });
+                }
 
+                console.log(`[${getTimestamp()}] ✅ Comensales pagados en la mesa ${idMesa}.`);
                 res.json({ message: "Mesa pagada" });
             });
         });
@@ -882,13 +965,13 @@ app.post('/actualizar_entregado/:id_comensal/:id_producto/:notas/:instancia/:ent
 
     db.query(selectQuery, selectParams, (err, results) => {
         if (err) {
-            console.error('❌ Error al buscar el registro:', err);
+            console.error(`[${getTimestamp()}] ❌ Error al buscar el registro:`, err);
             return res.status(500).json({ error: 'Error al buscar el registro', details: err.message });
         }
 
 
         if (results.length === 0) {
-            console.warn('⚠️ No se encontró ningún registro con esos parámetros:', {
+            console.warn(`[${getTimestamp()}] ⚠️ No se encontró ningún registro con esos parámetros:`, {
                 IDComensal: id_comensal,
                 IDProducto: id_producto,
                 Notas: finalNotas,
@@ -908,16 +991,16 @@ app.post('/actualizar_entregado/:id_comensal/:id_producto/:notas/:instancia/:ent
 
         db.query(updateQuery, updateParams, (err2, updateResult) => {
             if (err2) {
-                console.error('❌ Error al actualizar el registro:', err2);
+                console.error(`[${getTimestamp()}] ❌ Error al actualizar el registro:`, err2);
                 return res.status(500).json({ error: 'Error al actualizar el registro', details: err2.message });
             }
 
-            console.log('✅ Registro actualizado correctamente:', {
+            console.log(`[${getTimestamp()}] ✅ Registro actualizado correctamente:`, {
                 affectedRows: updateResult.affectedRows
             });
 
             if (updateResult.affectedRows === 0) {
-                console.warn('⚠️ El UPDATE no afectó ninguna fila. Puede que los datos no hayan coincidido exactamente.');
+                console.warn(`[${getTimestamp()}] ⚠️ El UPDATE no afectó ninguna fila. Puede que los datos no hayan coincidido exactamente.`);
                 return res.status(400).json({ warning: 'Ninguna fila fue actualizada. Verifica los datos proporcionados.' });
             }
 
@@ -931,7 +1014,18 @@ app.use((req, res, next) => {
     next();
 });
 
-
 // ✅ Start the server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`[${getTimestamp()}] 🚀 Server running on port ${PORT}`));
+
+// Generar timestamp para logs
+function getTimestamp() {
+    const now = new Date();
+    const pad = (n) => n.toString().padStart(2, '0');
+    const hours = pad(now.getHours());
+    const minutes = pad(now.getMinutes());
+    const day = pad(now.getDate());
+    const month = pad(now.getMonth() + 1);
+    const year = now.getFullYear();
+    return `${hours}:${minutes} ${day}-${month}-${year}`;
+}
