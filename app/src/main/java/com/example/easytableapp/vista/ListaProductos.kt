@@ -210,49 +210,41 @@ fun ListaProductos(navController: NavController, idCategoria: Int, idMesa: Int, 
             }
             // Contenedor de productos
             Column {
+                val filteredProductos = listaProductos.filter {
+                    it.NombreProducto.contains(searchQuery, ignoreCase = true)
+                }
+
                 if (isLoading.value) {
-                    Box (
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column (
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            CircularProgressIndicator()
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text (
-                                text = "Cargando productos...",
-                                fontSize = 20.sp,
-                                color = Color.LightGray,
-                            )
-                        }
-                    }
-                } else if (listaProductos.isEmpty()) {
-                    // Mostrar mensaje de error si no hay datos
-                    Box (
+                    Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column (
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "No se encontraron productos",
-                                fontSize = 20.sp,
-                                color = Color.LightGray,
-                                fontWeight = FontWeight.Normal
-                            )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Cargando productos...", fontSize = 20.sp, color = Color.LightGray)
+                        }
+                    }
+                } else if (listaProductos.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("No se encontraron productos", fontSize = 20.sp, color = Color.LightGray)
+                        }
+                    }
+                } else if (filteredProductos.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("No hay resultados para \"$searchQuery\"", fontSize = 20.sp, color = Color.LightGray)
                         }
                     }
                 } else {
-                    // Filtrar productos según la búsqueda
-                    val filteredProductos = listaProductos.filter {
-                        it.NombreProducto.contains(searchQuery, ignoreCase = true)
-                    }
-
-                    // Lista de productos (solo muestra los que coinciden con la búsqueda)
-                    LazyColumn (
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
                             .weight(1f),
@@ -260,14 +252,14 @@ fun ListaProductos(navController: NavController, idCategoria: Int, idMesa: Int, 
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         items(filteredProductos.chunked(2)) { productos ->
-                            Row (
+                            Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 productos.forEach { producto ->
                                     Button(
                                         onClick = {
-                                            if (producto.IDCategoria == 25 || producto.IDCategoria == 28)  {
+                                            if (producto.IDCategoria == 25 || producto.IDCategoria == 28) {
                                                 navController.navigate("ver_extras/${producto.IDProducto}/${idMesa}/${idComensal}")
                                             } else {
                                                 ApiController.obtenerProductoPorId(producto.IDProducto, {
@@ -277,7 +269,7 @@ fun ListaProductos(navController: NavController, idCategoria: Int, idMesa: Int, 
                                                     Log.e("APILP", "Error: ${it.localizedMessage}")
                                                 })
                                             }
-                                                  },
+                                        },
                                         modifier = Modifier
                                             .weight(1f)
                                             .height(80.dp)
@@ -288,7 +280,7 @@ fun ListaProductos(navController: NavController, idCategoria: Int, idMesa: Int, 
                                         ),
                                         shape = RoundedCornerShape(8.dp)
                                     ) {
-                                        Text (
+                                        Text(
                                             text = producto.NombreProducto,
                                             fontSize = 16.sp,
                                             maxLines = 2,
@@ -300,6 +292,7 @@ fun ListaProductos(navController: NavController, idCategoria: Int, idMesa: Int, 
                         }
                     }
                 }
+
             }
         }
     }

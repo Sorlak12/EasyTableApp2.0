@@ -44,12 +44,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.compose.material3.AlertDialog
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.text.style.TextOverflow
 
 import com.example.easytableapp.modelo.Categoria
 import com.example.easytableapp.modelo.Comensal
 import com.example.easytableapp.controlador.ApiController
+import com.example.easytableapp.modelo.ExtraData
 import com.example.easytableapp.modelo.Producto
 import com.example.easytableapp.ui.purple
+import com.example.easytableapp.ui.softGreen
+import com.example.easytableapp.ui.softRed
 
 @Composable
 fun ListaCategorias(navController: NavController, idMesa: Int, idComensal: Int) {
@@ -63,6 +68,10 @@ fun ListaCategorias(navController: NavController, idMesa: Int, idComensal: Int) 
     // Dialogo para cambiar PDV
     val showPDVDialog = remember { mutableStateOf(false) }
     val selectedPDV = remember { mutableStateOf("Cambiar carta") } // Estado para almacenar el PDV seleccionado
+    val productoSeleccionado = remember { mutableStateOf<Producto?>(null) }
+    val showDialog = remember { mutableStateOf(false) }
+    val inputUsuario = remember { mutableStateOf("") }
+    val cantidadSeleccionada = remember { mutableIntStateOf(1) }
     LaunchedEffect(Unit) {
         // Solicitud para obtener categorias
         ApiController.obtenerCategorias( idMesa,
@@ -97,6 +106,88 @@ fun ListaCategorias(navController: NavController, idMesa: Int, idComensal: Int) 
                 Log.e("API", "Error: ${it.localizedMessage}")
                 isLoading.value = false
             })
+    }
+
+    LaunchedEffect(showDialog.value) {
+        if (showDialog.value) inputUsuario.value = ""
+    }
+
+
+    // Diálogo ORIGINAL de confirmación para agregar producto
+    if (showDialog.value) {
+        AlertDialog(
+            onDismissRequest = { showDialog.value = false },
+            title = { Text("Confirmación") },
+            text = {
+                Column {
+                    Text("¿Está seguro de que desea agregar ${productoSeleccionado.value?.NombreProducto} al pedido?")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    TextField(
+                        value = inputUsuario.value,
+                        onValueChange = { inputUsuario.value = it },
+                        label = { Text("Comentario", fontWeight = FontWeight.Normal) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Cantidad de Producto")
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { if (cantidadSeleccionada.intValue > 1) cantidadSeleccionada.intValue -= 1 },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Black),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("-")
+                        }
+                        Text(cantidadSeleccionada.intValue.toString())
+                        Button(
+                            onClick = { cantidadSeleccionada.intValue += 1 },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Black),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("+")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val notaFinal = inputUsuario.value.ifBlank { " " }
+                        val extras: List<ExtraData> = emptyList()
+
+                        ApiController.agregarProducto(
+                            idComensal,
+                            productoSeleccionado.value?.IDProducto ?: 0,
+                            cantidadSeleccionada.intValue,
+                            0,
+                            notaFinal,
+                            extras,
+                            onSuccess = {
+                                showDialog.value = false
+                                navController.navigate("detalles_mesa/$idMesa")
+                            },
+                            onFailure = { Log.e("API", "Error: ${it.localizedMessage}") }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = softGreen,contentColor = Color.Black),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showDialog.value = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = softRed, contentColor = Color.Black),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 
     // Contenedor principal
@@ -305,30 +396,56 @@ fun ListaCategorias(navController: NavController, idMesa: Int, idComensal: Int) 
                         }
                     }
                 } else {
-                    val productosFiltrados = listaProductos.filter {
+                    val filteredProductos = listaProductos.filter {
                         it.NombreProducto.contains(searchQuery, ignoreCase = true)
                     }
 
-                    if (searchQuery.isNotBlank() && productosFiltrados.isNotEmpty()) {
+                    if (searchQuery.isNotBlank() && filteredProductos.isNotEmpty()) {
                         // Mostrar productos que coincidan con la búsqueda
                         LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .weight(1f),
+                            verticalArrangement = Arrangement.Top,
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            items(productosFiltrados) { producto ->
-                                Button(
-                                    onClick = {
-                                        navController.navigate("ver_extras/${producto.IDProducto}/${idMesa}/${comensalLocal?.IDComensal}")
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color.LightGray,
-                                        contentColor = Color.Black
-                                    ),
-                                    shape = RoundedCornerShape(8.dp)
+                            items(filteredProductos.chunked(2)) { productos ->
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text(producto.NombreProducto)
+                                    productos.forEach { producto ->
+                                        Button(
+                                            onClick = {
+                                                if (producto.IDCategoria == 25 || producto.IDCategoria == 28) {
+                                                    navController.navigate("ver_extras/${producto.IDProducto}/${idMesa}/${idComensal}")
+                                                } else {
+                                                    ApiController.obtenerProductoPorId(producto.IDProducto, {
+                                                        productoSeleccionado.value = it
+                                                        showDialog.value = true
+                                                    }, {
+                                                        Log.e("APILP", "Error: ${it.localizedMessage}")
+                                                    })
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(80.dp)
+                                                .padding(8.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color.LightGray,
+                                                contentColor = Color.Black
+                                            ),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ) {
+                                            Text(
+                                                text = producto.NombreProducto,
+                                                fontSize = 16.sp,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
