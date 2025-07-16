@@ -39,6 +39,10 @@ interface ApiService {
     @GET("/productos/categoria/{idCategoria}")
     fun getProductosPorCategoria(@Path("idCategoria") idCategoria: Int): Call<List<Producto>>
 
+    // Get todos los productos
+    @GET("/productos")
+    fun getProductos(): Call<List<Producto>>
+
     //get productos por id
     @GET("/producto/{idProducto}")
     fun getProductoPorId(@Path("idProducto") idProducto: Int): Call<Producto>

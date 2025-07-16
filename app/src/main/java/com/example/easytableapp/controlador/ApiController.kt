@@ -239,6 +239,33 @@ object ApiController {
             }
         })
     }
+    //Obtener todos los productos
+    fun obtenerTodosLosProductos(
+        onSuccess: (List<Producto>) -> Unit,
+        onFailure: (Throwable) -> Unit
+    ) {
+        val call = RetrofitClient.api.getProductos()
+        call.enqueue(object : Callback<List<Producto>> {
+            override fun onResponse(
+                call: Call<List<Producto>>,
+                response: Response<List<Producto>>
+            ) {
+                if (response.isSuccessful) {
+                    val productos = response.body() ?: emptyList()
+                    onSuccess(productos)
+                } else {
+                    Log.e("API", "Error en la respuesta: ${response.errorBody()?.string()}")
+                    onFailure(Exception("Error en la respuesta"))
+                }
+            }
+
+            override fun onFailure(call: Call<List<Producto>>, t: Throwable) {
+                Log.e("API", "Error: ${t.localizedMessage}")
+                onFailure(t)
+            }
+        })
+    }
+
 
     //función que obtiene los datos de una mesa por la ID
     fun obtenerMesaPorId(idMesa: Int, onSuccess: (Mesa) -> Unit, onFailure: (Throwable) -> Unit) {
@@ -772,6 +799,7 @@ object ApiController {
             })
         }
     }
+
 
 
 

@@ -243,6 +243,18 @@ app.get("/producto/:idProducto", (req, res) => {
     });
 });
 
+app.get("/productos", (req, res) => {
+
+    db.query("SELECT * FROM producto", (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Error al obtener productos");
+        }
+        res.json(results);
+    });
+});
+
+
 //GET extras
 app.get("/extras", (req, res) => {
     db.query("SELECT * FROM extra", (err, results) => {

@@ -48,6 +48,7 @@ import androidx.compose.material3.AlertDialog
 import com.example.easytableapp.modelo.Categoria
 import com.example.easytableapp.modelo.Comensal
 import com.example.easytableapp.controlador.ApiController
+import com.example.easytableapp.modelo.Producto
 import com.example.easytableapp.ui.purple
 
 @Composable
@@ -56,6 +57,7 @@ fun ListaCategorias(navController: NavController, idMesa: Int, idComensal: Int) 
     val isLoading = remember { mutableStateOf(true) }
     // Llamada a la API para obtener las categorias
     val listaCategorias = remember { mutableStateListOf<Categoria>() }
+    val listaProductos = remember { mutableStateListOf<Producto>() }
     var searchQuery by remember { mutableStateOf("") } // Estado para almacenar la búsqueda
     var comensalLocal by remember { mutableStateOf<Comensal?>(null) }
     // Dialogo para cambiar PDV
@@ -74,6 +76,17 @@ fun ListaCategorias(navController: NavController, idMesa: Int, idComensal: Int) 
                 isLoading.value = false
             }
         )
+        ApiController.obtenerTodosLosProductos(
+            onSuccess = { productos ->
+                listaProductos.clear()
+                listaProductos.addAll(productos)
+            },
+            onFailure = {
+                Log.e("APIProductos", "Error: ${it.localizedMessage}")
+            }
+        )
+
+
         // Solicitud para obtener comensal
         ApiController.obtenerDatosComensal(idComensal,
             {
@@ -277,70 +290,95 @@ fun ListaCategorias(navController: NavController, idMesa: Int, idComensal: Int) 
             // Contenedor de categorias
             Column {
                 if (isLoading.value) {
-                    Box (
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column (
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            CircularProgressIndicator()
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text (
-                                text = "Cargando categorias...",
-                                fontSize = 20.sp,
-                                color = Color.LightGray,
-                            )
-                        }
-                    }
-                } else if (listaCategorias.isEmpty()) {
-                    // Mostrar mensaje de error si no hay datos
-                    Box (
+                    Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column (
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "No se encontraron categorias",
+                                text = "Cargando categorías...",
                                 fontSize = 20.sp,
                                 color = Color.LightGray,
-                                fontWeight = FontWeight.Normal
                             )
                         }
                     }
                 } else {
-                    val filteredCategorias = listaCategorias.filter {
-                        it.NombreCategoria.contains(searchQuery, ignoreCase = true)
+                    val productosFiltrados = listaProductos.filter {
+                        it.NombreProducto.contains(searchQuery, ignoreCase = true)
                     }
 
-                    // Lista de categorías (solo muestra las que coinciden con la búsqueda)
-                    LazyColumn (
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        items(filteredCategorias.chunked(2)) { rowItems ->
-                            Row (
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.fillMaxWidth()
+                    if (searchQuery.isNotBlank() && productosFiltrados.isNotEmpty()) {
+                        // Mostrar productos que coincidan con la búsqueda
+                        LazyColumn(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            items(productosFiltrados) { producto ->
+                                Button(
+                                    onClick = {
+                                        navController.navigate("ver_extras/${producto.IDProducto}/${idMesa}/${comensalLocal?.IDComensal}")
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.LightGray,
+                                        contentColor = Color.Black
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(producto.NombreProducto)
+                                }
+                            }
+                        }
+                    } else {
+                        val filteredCategorias = listaCategorias.filter {
+                            it.NombreCategoria.contains(searchQuery, ignoreCase = true)
+                        }
+
+                        if (filteredCategorias.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
                             ) {
-                                rowItems.forEach { categoria ->
-                                    Button (
-                                        onClick = { navController.navigate("ver_productos/${categoria.IDCategoria}/$idMesa/${comensalLocal?.IDComensal}") },
-                                        modifier = Modifier
-                                            .size(90.dp)
-                                            .weight(1f)
-                                            .padding(8.dp),
-                                        colors = ButtonDefaults.buttonColors (
-                                            containerColor = Color.LightGray,
-                                            contentColor = Color.Black
-                                        ),
-                                        shape = RoundedCornerShape(8.dp),
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "No se encontraron categorías",
+                                        fontSize = 20.sp,
+                                        color = Color.LightGray,
+                                        fontWeight = FontWeight.Normal
+                                    )
+                                }
+                            }
+                        } else {
+                            // Mostrar categorías normalmente
+                            LazyColumn(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                items(filteredCategorias.chunked(2)) { rowItems ->
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Text (
-                                            text = categoria.NombreCategoria
-                                        )
+                                        rowItems.forEach { categoria ->
+                                            Button(
+                                                onClick = {
+                                                    navController.navigate("ver_productos/${categoria.IDCategoria}/$idMesa/${comensalLocal?.IDComensal}")
+                                                },
+                                                modifier = Modifier
+                                                    .size(90.dp)
+                                                    .weight(1f)
+                                                    .padding(8.dp),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color.LightGray,
+                                                    contentColor = Color.Black
+                                                ),
+                                                shape = RoundedCornerShape(8.dp),
+                                            ) {
+                                                Text(categoria.NombreCategoria)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -348,6 +386,7 @@ fun ListaCategorias(navController: NavController, idMesa: Int, idComensal: Int) 
                     }
                 }
             }
+
         }
     }
 }
